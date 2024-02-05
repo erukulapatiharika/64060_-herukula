@@ -1,0 +1,94 @@
+---
+title: "FML Assignment 1"
+author: "Harika"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+# QUESTION 1: 
+# Download a dataset from the web. You may use any source, but specify the source in your code. Also ensure that the data has a mix of quantitative and qualitative (categorical) variables.
+
+# QUESTION 2:
+# Import the dataset into R
+
+```{r}
+# Load the dataset
+house_prices <- read.csv("C:/Users/its me/OneDrive - Kent State University/Desktop/Rhistory/House_Prices.csv")
+```
+
+```{r}
+str(house_prices)
+
+```
+
+# QUESTION 3:
+# Print out descriptive statistics for a selection of quantitative and categorical variables.
+```{r}
+# Display the first few rows of the dataset
+head(house_prices)
+
+# Descriptive statistics for quantitative variables
+summary(house_prices$SalePrice) 
+
+# Descriptive statistics for categorical variables
+table(house_prices$ FullBath)
+```
+#Descriptive statistics for quantitative variable "SalePrice":
+The quantitative variable "SalePrice" exhibits the following descriptive statistics:
+
+- Minimum (Min.): $34,900, denoting the lowest sale price in the dataset.
+
+- First Quartile (1st Qu.): $130,000, indicating that 25% of the sale prices fall below this value.
+
+- Median: $163,000, representing the middle value when all sale prices are arranged in ascending order.
+
+- Mean: Approximately $183,108, serving as the average sale price.
+
+- Third Quartile (3rd Qu.): $216,878, signifying that 75% of the sale prices are below this threshold.
+
+- Maximum (Max.): $755,000, the highest sale price observed in the dataset.
+
+#Descriptive statistics for categorical variable "FullBath":
+Here are the descriptive statistics for the categorical variable "FullBath":
+
+-Category 0: There are 5 instances where the number of full bathrooms is 0.
+
+-Category 1: There are 405 instances where the number of full bathrooms is 1.
+
+-Category 2: There are 467 instances where the number of full bathrooms is 2.
+
+-Category 3: There are 23 instances where the number of full bathrooms is 3.
+
+
+# QUESTION 4:
+# Transform at least one variable. It doesn't matter what the transformation is.
+```{r}
+# Transform a variable 
+house_prices$LogSalePrice <- log(house_prices$SalePrice)
+```
+
+# QUESTION 5:
+# Plot at least one quantitative variable, and one scatterplot
+```{r}
+# Plotting a quantitative variable 
+hist(house_prices$SalePrice, main = "Histogram of SalePrice", xlab = "SalePrice")
+
+# Check for missing values in GarageArea and SalePrice
+sum(is.na(house_prices$GarageArea))
+sum(is.na(house_prices$SalePrice))
+
+# Remove rows with missing values
+house_prices <- na.omit(house_prices)
+
+# Plotting a scatterplot 
+plot(house_prices$GarageArea, house_prices$SalePrice, 
+     main = "Scatterplot: GarageArea vs SalePrice",
+     xlab = "GarageArea", ylab = "SalePrice")
+
+
+
+
+```
+
+
