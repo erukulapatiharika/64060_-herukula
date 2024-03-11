@@ -1,0 +1,195 @@
+---
+title: "Assignment 3 h"
+author: "Harika"
+date: "`r Sys.Date()`"
+output: html_document
+---
+# QUESTION 
+The file UniversalBank.csv contains data on 5000 customers of Universal Bank. The data include
+customer demographic information (age, income, etc.), the customer’s relationship with the bank
+(mortgage, securities account, etc.), and the customer response to the last personal loan campaign
+(Personal Loan). Among these 5000 customers, only 480 (= 9.6%) accepted the personal loan that
+was offered to them in the earlier campaign. In this exercise, we focus on two predictors: Online
+(whether or not the customer is an active user of online banking services) and Credit Card
+(abbreviated CC below) (does the customer hold a credit card issued by the bank), and the outcome
+Personal Loan (abbreviated Loan below).
+Partition the data into training (60%) and validation (40%) sets
+```{r}
+library(class)
+library(caret)
+library(dplyr)
+library(e1071)
+
+# Read the data
+data <- read.csv("C:\\Users\\its me\\OneDrive - Kent State University\\Desktop\\Rhistory\\UniversalBank (1).csv")
+
+# Display the first few rows of the data
+head(data)
+
+# Check the dimensions of the data
+dim(data)
+```
+
+
+```{r}
+# Partition the data into training (60%) and validation (40%) sets
+set.seed(123)
+trainIndex <- createDataPartition(data$Personal.Loan, p = 0.6, list = FALSE)
+trainData <- data[trainIndex, ]
+validationData <- data[-trainIndex, ]
+
+# Display dimensions of training and validation sets
+dim(trainData)
+dim(validationData)
+```
+
+# QUESTION A:
+Create a pivot table for the training data with Online as a column variable, CC as a row
+variable, and Loan as a secondary row variable. The values inside the table should convey
+the count. In R use functions melt() and cast(), or function table(). In Python, use panda
+dataframe methods melt() and pivot().
+```{r}
+library(pander)
+
+# Create a subset of relevant columns for analysis
+subset <- trainData[c("CreditCard", "Personal.Loan", "Online")]
+
+# Create a pivot table for the subset
+pivot_table <- ftable(subset)
+
+# Display the pivot table using pander
+pandoc.table(pivot_table, style = "grid", split.tables = Inf)
+```
+
+# QUESTION B:
+Consider the task of classifying a customer who owns a bank credit card and is actively using
+online banking services. Looking at the pivot table, what is the probability that this customer
+will accept the loan offer? [This is the probability of loan acceptance (Loan = 1) conditional on
+having a bank credit card (CC = 1) and being an active user of online banking services (Online
+= 1)]
+```{r}
+# Check for conflicts
+ls()
+
+# If 'df' is not a conflict, reassign the dataframe
+df <- data
+
+# Convert 'Personal.Loan' to numeric if it's a factor
+df$Personal.Loan <- as.numeric(as.character(df$Personal.Loan))
+
+# Filter the data for customers with a bank credit card (CreditCard = 1) and active online banking (Online = 1)
+subset_data <- subset(df, CreditCard == 1 & Online == 1)
+
+# Calculate the probability of loan acceptance among the filtered customers
+probability_loan_acceptance <- mean(subset_data$Personal.Loan, na.rm = TRUE)
+
+# Print the result
+cat("Probability of loan acceptance for customers with bank credit card and active online banking:", probability_loan_acceptance, "\n")
+
+
+```
+
+# QUESTION C:
+Create two separate pivot tables for the training data. One will have Loan (rows) as a
+function of Online (columns) and the other will have Loan (rows) as a function of CC.
+```{r}
+# Create subsets and pivot tables for other analyses (Online and CreditCard)
+online_subset <- trainData[c("Personal.Loan", "Online")]
+pivot_online <- ftable(online_subset)
+pandoc.table(pivot_online, style = "grid", split.tables = Inf)
+
+cc_subset <- trainData[c("Personal.Loan", "CreditCard")]
+pivot_cc <- ftable(cc_subset)
+pandoc.table(pivot_cc, style = "grid", split.tables = Inf)
+```
+
+# QUESTION D:
+Compute the following quantities [P(A | B) means “the probability ofA given B”]:
+i. P(CC = 1 | Loan = 1) (the proportion of credit card holders among the loan acceptors)
+ii. P(Online = 1 | Loan = 1)
+iii. P(Loan = 1) (the proportion of loan acceptors)
+iv. P(CC = 1 | Loan = 0)
+v. P(Online = 1 | Loan = 0)
+vi. P(Loan = 0)
+```{r}
+# Calculate conditional probabilities
+# i. P(CC = 1 | Loan = 1) (the proportion of credit card holders among the loan acceptors)
+cc_loan1 <- pivot_cc[2, 2]
+loan1 <- sum(pivot_cc[2, ])
+CC_given_loan1 <- cc_loan1 / loan1
+cat("Probability (CC = 1 | Loan = 1):", round(CC_given_loan1, 4), "\n")
+
+# ii. P(Online = 1 | Loan = 1)
+online_loan1 <- pivot_online[2, 2]
+loan2 <- sum(pivot_online[2, ])
+online_given_loan1 <- online_loan1 / loan2
+cat("Probability (Online = 1 | Loan = 1):", round(online_given_loan1, 4), "\n")
+
+# ii. P(Loan = 1) (the proportion of loan acceptors)
+loan_acceptors <- sum(trainData$Personal.Loan == 1)
+total <- nrow(trainData)
+loan_acceptors1 <- loan_acceptors / total
+cat("Probability (Loan = 1):", round(loan_acceptors1, 4), "\n")
+
+# v. P(CC = 1 | Loan = 0)
+cc_loan2 <- pivot_cc[1, 2]
+loan3 <- sum(pivot_cc[1, ])
+CC_notgiven_loan <- cc_loan2 / loan3
+cat("Probability (CC = 1 | Loan = 0):", round(CC_notgiven_loan, 4), "\n")
+
+# v. P(Online = 1 | Loan = 0)
+online_loan2 <- pivot_online[1, 2]
+loan4 <- sum(pivot_online[1, ])
+online_notgiven_loan <- online_loan2 / loan4
+cat("Probability (Online = 1 | Loan = 0):", round(online_notgiven_loan, 4), "\n")
+ 
+#vi. P(Loan = 0)
+nonloan_acceptors <- 1 - loan_acceptors1
+cat("Probability (Loan = 0):", round(nonloan_acceptors, 4), "\n")
+```
+
+# QUESTION E:
+Use the quantities computed above to compute the naive Bayes probability P(Loan = 1 | CC
+= 1, Online = 1).
+```{r}
+# Calculate Naive Bayes probability
+nb_prob <- (CC_given_loan1 * online_given_loan1 * loan_acceptors1) / 
+           ((CC_given_loan1 * online_given_loan1 * loan_acceptors1) + 
+            (CC_notgiven_loan * online_notgiven_loan * nonloan_acceptors))
+cat("Probability (Personal.Loan  = 1 | CreditCard = 1, Online = 1):", round(nb_prob, 4), "\n")
+```
+# QUESTION F:
+# Compare this value with the one obtained from the pivot table in (B). Which is a more
+accurate estimate?
+
+The provided values are probabilities related to loan acceptance for customers with a bank credit card (CC) and active online banking. 
+
+In (B), the probability of loan acceptance for customers with a bank credit card and active online banking is given as 0.09297052.
+
+In (E), the probability of loan acceptance given that the customer has a bank credit card (CC = 1) and active online banking (Online = 1) is given as 0.1106.
+
+To compare these values, (E) appears to be a higher probability than the one obtained in (B). Therefore, based on the provided information, the estimate in (E) is higher and suggests a higher probability of loan acceptance for customers with a bank credit card and active online banking.
+
+
+
+# QUESTION G:
+Which of the entries in this table are needed for computing P(Loan = 1 | CC = 1, Online = 1)?
+Run naive Bayes on the data. Examine the model output on training data, and find the entry
+that corresponds to P(Loan = 1 | CC = 1, Online = 1). Compare this to the number you
+obtained in (E).
+
+```{r}
+# Build the Naive Bayes model
+model <- naiveBayes(Personal.Loan ~ ., data = subset)
+model
+```
+
+
+```{r}
+# Calculate Naive Bayes probability using the model
+result <- (0.327 * 0.643 * 0.092) / ((0.327 * 0.643 * 0.092) + (0.290 * 0.595 * 0.907))
+cat("Prob (Loan = 1 | CC = 1, Online = 1):", round(result, 4))
+
+```
+
+The values provided for (E) and (G) are very close, with (E) being 0.1106 and (G) being 0.11.In a comparative sense, (E) and (G) can be considered nearly identical.
