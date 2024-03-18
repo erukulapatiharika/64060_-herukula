@@ -1,0 +1,266 @@
+---
+title: "Assignment 4 H"
+author: "Harika"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+### Problem 
+
+An equities analyst is studying the pharmaceutical industry and would like your help in exploring and understanding the financial data collected by her firm. Her main objective is to understand the structure of the pharmaceutical industry using some basic financial measures. Financial data gathered on 21 firms in the pharmaceutical industry are available in the file Pharmaceuticals.csv. For each firm, the following variables are recorded:  
+
+1. Market capitalization (in billions of dollars)
+2. Beta
+3. Price/earnings ratio
+4. Return on equity
+5. Return on assets
+6. Asset turnover
+7. Leverage
+8. Estimated revenue growth
+9. Net profit margin
+10. Median recommendation (across major brokerages)
+11. Location of firm’s headquarters
+12. Stock exchange on which the firm is listed
+
+Use cluster analysis to explore and analyze the given dataset as follows: 
+
+
+
+### Data Importing and Cleaning:
+
+1.Loading the required libraries.
+```{r}
+library(tidyverse, warn.conflicts = FALSE)
+library(factoextra, warn.conflicts = FALSE)
+library(caret, warn.conflicts = FALSE)
+library(e1071, warn.conflicts = FALSE)
+library(cluster, warn.conflicts = FALSE)
+library(dplyr, warn.conflicts = FALSE)
+library(tinytex, warn.conflicts = FALSE)
+library(dbscan, warn.conflicts = FALSE)
+library(fpc, warn.conflicts = FALSE)
+```
+
+2.Importing and reading the dataset.
+```{r}
+library(readr)
+Pharmaceuticals <- read.csv("C:\\Users\\its me\\OneDrive - Kent State University\\Desktop\\Rhistory\\Pharmaceuticals.csv")
+dim(Pharmaceuticals)
+```
+
+3.Dropping the categorical variables.
+```{r}
+set.seed(1)
+Pharma <- Pharmaceuticals[,-c(2,12,13,14)]
+row.names(Pharma) <- Pharma[,1]
+Pharma <- Pharma[,-1]
+head(Pharma)
+```
+
+All the categorical variables have been dropped.
+
+4.Normalizing the data by using the scale function.
+```{r}
+Pharma_Norm <- scale(Pharma)
+head(Pharma_Norm)
+```
+
+### Questions:-
+
+# 1.Use only the numerical variables (1 to 9) to cluster the 21 firms. Justify the various choices made in conducting the cluster analysis, such as weights for different variables, the specific clustering algorithm(s) used, the number of clusters formed, and so on. 
+
+Step 1: Before proceeding with clustering, we must determine the appropriate number of clusters, denoted as 'k.' This involves utilizing two commonly employed methods: the elbow method and the silhouette method, to ascertain the optimal value of 'k.'
+
+Finding the value of "K" by using the elbow and silhouette method.
+```{r}
+fviz_nbclust(Pharma_Norm, kmeans, method="wss")
+fviz_nbclust(Pharma_Norm, kmeans, method="silhouette")
+```
+
+In the elbow method, we determine the elbow point where the rate of decrease in within-cluster sum of squares (WCSS) slows down significantly. Although a distinct elbow point isn't evident in the graph, we observe a linear reduction in WCSS values for k values beyond 5. Hence, we consider k=5.
+
+To validate this choice, we employ the silhouette method, which measures the cohesion within clusters and the separation between clusters. We select the k value that yields the highest average silhouette width, indicating better group separation and cohesion. In this case, the optimal k value also turns out to be 5.
+
+Therefore, after employing both methods, we conclude that k=5 provides the most suitable clustering solution. (Note: This value may be adjusted if deemed necessary for improved insights.)
+
+Step 2: With the determined value of 'k' and the numerical variables, we will proceed to cluster the 21 firms. This clustering can be accomplished using different methods including k-means, DBSCAN, and Hierarchical clustering. We will execute all three methods and then evaluate which one is the most suitable for the given data.
+
+### K-Means Clustering:
+
+K-Means is a clustering technique which is stochastic in nature whose objective is to group similar data points together by identifying k number of centroids, and then allocate every data point to the nearest cluster, while keeping the centroids as small as possible.
+
+Clustering the data using the K-Means Algorithm.
+```{r}
+set.seed(2)
+Pharma_Kmeans <- kmeans(Pharma_Norm, centers = 5, nstart = 25)
+fviz_cluster(Pharma_Kmeans, data = Pharma_Norm)
+Pharma_Kmeans$centers
+Pharma_Kmeans$size
+Pharma_Kmeans$withinss
+```
+
+We are applying the k-means technique on the normalized data with k=5.
+
+K-means clustering categorizes the 21 firms into 5 clusters based on similarities across 9 different variables. The optimal value of k=5 leads to a meaningful segmentation of clusters.
+
+In the first cluster, there are 8 companies characterized by moderate market capitalization, efficient asset utilization, and solid profitability. The distance within this cluster is approximately 21.9.
+
+The second cluster comprises 4 companies with very low market capitalization, low returns, and profitability challenges, with a within-cluster distance of approximately 12.8.
+
+Within the third cluster, there are 3 companies with very low market capitalization, high volatility, and struggles in generating returns. The distance within this cluster is approximately 15.6.
+
+The fourth cluster represents 4 companies with high market capitalization, strong returns, and robust profitability, with a within-cluster distance of approximately 9.3.
+
+Finally, the fifth cluster consists of 2 companies with low market capitalization but high valuation, although they encounter difficulties in generating returns. Due to the involvement of only two firms, the within-cluster sum of square distance is very low at 2.8.
+
+### DBSCAN Clustering:
+
+DBSCAN is a density-based clustering algorithm that groups points closely packed together while filtering out noise points in low-density regions. It relies on two parameters: Epsilon, which measures the radius around a data point, and Minimum Points, specifying the minimum number of data points required within the radius of a given point.
+
+Finding the epsilon value.
+```{r}
+dbscan::kNNdistplot(Pharma_Norm, k=5)
+abline(h=3.1, lty=2)
+```
+
+According to the plot the optimal epsilon value would be '3.1'.
+
+Clustering the data using the DBSCAN Algorithm.
+```{r}
+Pharma_DBscan <- fpc::dbscan(Pharma_Norm, eps = 3.1, MinPts = 5)
+plot(Pharma_DBscan, Pharma_Norm, main="DBSCAN", frame= TRUE, xlab = "X", ylab = "Y") 
+``` 
+
+DBSCAN clustering relies on a minimum density of points to form clusters, which can be challenging with a small dataset like the one provided. Due to the limited number of data points and variables, achieving the required density for meaningful clusters becomes difficult, potentially diluting the similarity between data points. Consequently, the algorithm may struggle to form distinct clusters, as it relies on a certain number of points being close together within a specified radius (epsilon) to form dense clusters. Moreover, DBSCAN considers certain boundary points and noise points by default, which may not be suitable for datasets lacking specific outliers or boundaries. Thus, DBSCAN may not be an appropriate clustering algorithm for the given data.
+
+### Hierarchical Clustering
+
+Hierarchical Clustering creates a hierarchy of clusters in a dataset by initially treating each data point as an individual cluster and then progressively merging the nearest clusters until a predefined criterion is met. This results in a tree-like structure known as a Dendrogram.
+
+Hierarchical clustering can be categorized into two types: 
+
+(a) Agglomerative Clustering: This approach starts with individual data points as clusters and iteratively merges them together. 
+
+(b) Divisive Clustering: This approach begins with the entire dataset as a single cluster and iteratively divides it into smaller clusters.
+
+We will proceed to visualize the clusters using both Agglomerative clustering (Agnes) and Divisive Clustering (Diana) and determine which one is more suitable for the given data.
+
+Plotting a Dendrogram using AGNES()
+```{r}
+hc_single <- agnes(Pharma_Norm, method = "single")
+hc_complete <- agnes(Pharma_Norm, method = "complete")
+hc_ward <- agnes(Pharma_Norm, method = "ward")
+hc_average <- agnes(Pharma_Norm, method = "average")
+
+print(hc_single$ac)
+print(hc_complete$ac)
+print(hc_ward$ac)
+print(hc_average$ac)
+
+pltree(hc_ward, cex = 0.6, hang = -1, main = "Dendrogram of agnes")
+rect.hclust(hc_ward, k=5, border = 1:5)
+```
+
+In the process of Hierarchical Clustering, we initially calculate agglomerative coefficients using various methods and select the one returning the highest value, which in this instance is 'Ward linkage.' This coefficient indicates the distance between clusters, reflecting their dissimilarity. Analyzing the dendrogram reveals five clusters, with the first comprising 7 firms, the second containing 4 firms, and so on. The last cluster includes only one firm, suggesting potential outliers. However, it's important to note that outliers may not be applicable to this dataset, where each firm is considered a data point rather than an outlier. Additionally, selecting k as 5 leads to a meaningful cluster division, as clusters are separated based on similar heights, minimizing distances among them and enhancing overall similarity.
+
+Similarly, Divisive Clustering would also identify outliers, making it unsuitable for the given dataset.
+
+### Conclusion:
+
+Among the three clustering algorithms applied, "K-Means" proves most suitable for this dataset. It effectively groups firms with similar characteristics into tighter clusters and is sensitive to outliers and noisy data, yielding meaningful results for a dataset without outliers.
+
+On the other hand, DBSCAN Clustering, by default, considers boundary points and noise points, while the small dataset size poses challenges in forming meaningful clusters. Likewise, Hierarchical Clustering also accounts for outliers, which may not be applicable to this dataset. This clustering algorithm is better suited for datasets where the underlying structure involves natural groupings at different levels of granularity. Hence, both DBSCAN and Hierarchical Clustering might not be as suitable for the given Pharmaceutical dataset.
+
+
+# 2.(a) Interpret the clusters with respect to the numerical variables used in forming the clusters. 
+
+Calculating the centroid and size values for normalized data.
+```{r}
+set.seed(2)
+Pharma_Kmeans <- kmeans(Pharma_Norm, centers = 5, nstart = 25)
+Pharma_Kmeans$centers
+Pharma_Kmeans$size
+Pharma_Kmeans$withinss
+```
+
+Interpretation of the clusters for Normalized data:
+
+(i) Cluster -1: This cluster comprises 8 firms, exhibiting a within-cluster distance of approximately 21.9. Firms in this cluster have relatively low values in Market Capital, Beta, PE Ratio, ROE, and ROA. Asset Turnover is moderately positive, indicating reasonable efficiency in asset utilization. Leverage and Revenue Growth are significantly negative, while Net Profit Margin is positive, suggesting stable profitability.
+
+(ii) Cluster -2: This cluster consists of 4 firms with a within-cluster distance of approximately 12.8. These firms demonstrate low values in Market Capital, slightly positive Beta, and negative values in PE Ratio, ROE, and ROA. Asset Turnover is notably negative, indicating inefficiency in asset utilization. Revenue Growth is very high, and Net Profit Margin is close to zero, indicating profitability challenges.
+
+(iii) Cluster -3: Comprising 3 companies, this cluster exhibits a within-cluster distance of approximately 15.6. Firms in this cluster have extremely low Market Capital, high positive Beta, and moderately negative values in PE Ratio, ROE, and ROA. Asset Turnover is negative, indicating potential inefficiency in asset utilization. Leverage is notably positive, suggesting higher financial leverage. Revenue Growth is moderately negative, and Net Profit Margin is strongly negative, indicating profitability challenges.
+
+(iv) Cluster -4: This cluster represents 4 companies with a within-cluster distance of approximately 9.3. These companies exhibit high values in Market Capital, slightly negative Beta, and moderately negative values in PE Ratio, ROE, and ROA. Revenue Growth is positive, and Net Profit Margin is moderately positive, indicating stable profitability. Asset Turnover is positive, suggesting efficient asset utilization.
+
+(v) Cluster -5: Including 2 companies, this cluster has a Within-Cluster sum of square distance of 2.8. Firms in this cluster have negative values in Market Capital, Beta, and ROA. PE Ratio and ROE are very high, suggesting high valuation and strong returns. Revenue Growth is moderately positive, and Net Profit Margin is strongly negative, indicating profitability challenges.
+
+### Conclusion:
+
+After evaluating all the clusters, cluster no-4 appears to be the most ideal as it demonstrates a within-cluster sum of square distance of 9.3 for 4 different firms. Additionally, it shows high market capitalization, strong profitability, and relatively lower risk.
+
+(b) Is there a discernible pattern in the clusters with respect to the numerical variables (10 to 12)? (those not used in forming the clusters)
+
+Dropping the first two categorical variables.
+```{r}
+set.seed(3)
+Pharma_Pattern <- Pharmaceuticals[,-c(1,2)]
+head(Pharma_Pattern)
+```
+
+Finding the pattern in the clusters with respect to the numerical variables for those not used in forming the clusters.
+```{r}
+Cluster_Pattern <-  Pharma_Pattern %>% select(c(10,11,12)) %>% mutate(Cluster = Pharma_Kmeans$cluster)
+print(Cluster_Pattern)
+```
+
+Visualizing the distribution of firms grouped by clusters by using the bar charts.
+```{r}
+# Bar chart for Median Recommendation
+Median_Recommendation <- ggplot(Cluster_Pattern, aes(x = factor(Cluster), 
+                         fill = Median_Recommendation)) + geom_bar() + 
+                         labs(x = 'Clusters', y = 'Frequency', 
+                         title = 'Median Recommendation Across the Clusters') + 
+                         theme_minimal()
+Median_Recommendation
+
+# Bar Chart for Location
+Location <- ggplot(Cluster_Pattern, aes(x = factor(Cluster), fill = Location)) +  
+            geom_bar() + labs(x = 'Clusters', y = 'Frequency',
+            title = 'Location Across the Clusters') +
+            theme_minimal()
+Location        
+
+# Bar Chart for Exchange
+Exchange <- ggplot(Cluster_Pattern, aes(x = factor(Cluster), fill = Exchange)) + 
+            geom_bar() + labs(x = 'Clusters', y = 'Frequency', 
+            title = 'Exchange Across the Clusters') + 
+            theme_minimal()
+Exchange
+```
+
+Interpretation of the clusters with respect to categorical variables:
+
+(i) Cluster -1 predominantly comprises companies headquartered in the United States, followed by the UK and Switzerland, listed on the New York Stock Exchange (NYSE). Analysts recommend holding their stocks, indicating stability and relatively low-risk investment prospects.
+
+(ii) Cluster -2 includes companies listed on the NYSE from various locations such as the US, Ireland, and France. Analysts recommend a moderate buy or sell, suggesting potential growth opportunities for these firms.
+
+(iii) Cluster -3 consists of a mix of American and German companies listed on NYSE, AMEX, and NASDAQ stock exchanges. Analysts recommend holding or moderate buy, indicating a balanced outlook for these companies.
+
+(iv) Cluster -4 comprises companies from the UK and USA with a mixed recommendation of partially hold and buy for their NYSE-listed stocks. This implies potential growth accompanied by some level of risk.
+
+(v) Cluster -5 encompasses a mix of American and Canadian companies listed on the NYSE, with a moderate buy or hold recommendation, indicating both growth potential and some level of risk.
+
+# 3.Provide an appropriate name for each cluster using any or all of the variables in the dataset:
+
+(i) Cluster -1 - "Stable Firms": These companies exhibit balanced financial metrics and operate efficiently within their industry.
+
+(ii) Cluster -2 - "Growth-Oriented Firms": Companies with low asset turnover and high revenue growth suggest growth potential but sub-optimal efficiency.
+
+(iii) Cluster -3 - "High-Risk Firms": These companies have high leverage, low net profit margin, and ROA, indicating reliance on debt with inadequate profitability and returns, raising investor concerns about meeting debt obligations and potential financial distress.
+
+(iv) Cluster -4 - "Profitable Firms": Typically large and well-established companies with significant market presence and a strong financial position. High market capitalization reflects a large number of outstanding shares and a high stock price, resulting in a high valuation. Moderately positive net profit margin indicates stable profitability.
+
+(v) Cluster -5 - "Overvalued-Risky Firms": High PE ratio and low net profit margin suggest the market values the company's stock at a premium compared to its earnings, despite lower profitability. This poses a risk, as investors paying a premium for each dollar of earnings may lead to future declines in stock price if market expectations are not met.
+
+***
